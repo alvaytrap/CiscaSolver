@@ -15,6 +15,7 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import HomeIcon from '@mui/icons-material/Home';
 import StarIcon from '@mui/icons-material/Star';
 import ChecklistIcon from '@mui/icons-material/Checklist';
+import MoveUpIcon from '@mui/icons-material/MoveUp';
 import SettingsIcon from '@mui/icons-material/Settings';
 import SupportIcon from '@mui/icons-material/Support';
 import LogoutIcon from '@mui/icons-material/Logout';
@@ -29,14 +30,13 @@ const DRAWER_WIDTH = 240;
 
 const LINKS = [
   { text: 'Home', href: '/', icon: HomeIcon },
-  { text: 'Starred', href: '/starred', icon: StarIcon },
-  { text: 'Tasks', href: '/tasks', icon: ChecklistIcon },
+  { text: 'Simulador Caché', href: '/cacheSim', icon: MoveUpIcon },
 ];
 
 const PLACEHOLDER_LINKS = [
-  { text: 'Settings', icon: SettingsIcon },
+  // { text: 'Settings', icon: SettingsIcon },
   { text: 'Support', icon: SupportIcon },
-  { text: 'Logout', icon: LogoutIcon },
+  // { text: 'Logout', icon: LogoutIcon },
 ];
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -48,7 +48,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Toolbar sx={{ backgroundColor: 'background.paper' }}>
               <DashboardIcon sx={{ color: '#444', mr: 2, transform: 'translateY(-2px)' }} />
               <Typography variant="h6" noWrap component="div" color="black">
-                Next.js App Router
+                Cisca Solver
               </Typography>
             </Toolbar>
           </AppBar>

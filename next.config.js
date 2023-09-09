@@ -2,7 +2,7 @@
 const nextConfig = {
   output: "export",
   basePath: "/CiscaSolver",
-  reactStrictMode: true,
+  // reactStrictMode: true,
   swcMinify: true,
   modularizeImports: {
     '@mui/icons-material': {

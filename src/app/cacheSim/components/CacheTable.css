@@ -1,0 +1,13 @@
+.custom-table {
+  table-layout: auto;
+}
+
+.custom-table td {
+  width: auto;
+  white-space: nowrap; /* Para evitar que el contenido se divida en varias líneas */
+}
+
+.custom-table th {
+  width: auto;
+  white-space: nowrap; /* Para evitar que el contenido se divida en varias líneas */
+}
