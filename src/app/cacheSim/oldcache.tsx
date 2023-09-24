@@ -13,10 +13,16 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import CacheTable from "./components/cacheTable";
+import {
+  checkCache,
+  initCache,
+  initAccessOrder,
+  updateCache,
+  updateCacheLRU,
+} from "./utils/cache";
 import { CacheCheck } from "./cache.interfaces";
 import { useForm, Controller } from "react-hook-form";
 import { ECachePolicy, EReplacementAlgorithm } from "./utils/cache";
-import CacheSimulator from "./cacheSim";
 
 const schema = z.object({
   cacheLines: z
@@ -72,17 +78,110 @@ const CacheSimPage = () => {
         return;
       }
 
-      const simulator = new CacheSimulator(
-        cachePolicy,
-        replacementAlgorithm,
-        cacheLines,
-        wordsPerBlock,
-        addressesToCheck,
-      );
+      const cacheContents = initCache(cacheLines, wordsPerBlock);
 
-      const {newResults, cacheMissCount, initialCacheContents} = simulator.runSimulation();
-      initialCacheRef.current = initialCacheContents;
-      console.log(newResults);
+      const newResults: CacheCheck[] = [];
+
+      const addressesArray = addressesToCheck.split(",").map(Number);
+
+      const isLRU =
+        cachePolicy !== CachePolicy.DirectMapped &&
+        replacementAlgorithm === ReplacementAlgorithm.LRU;
+
+      let cacheMissCount = 0;
+
+      // Genera consecutivamente, quizas haya que pasarlo a un metodo
+      for (let i = 0; i < cacheLines * wordsPerBlock; i++) {
+        const cacheLineIndex = Math.floor(i / wordsPerBlock);
+        const wordIndex = i % wordsPerBlock;
+
+        if (cacheContents[cacheLineIndex][wordIndex] === 0) {
+          cacheContents[cacheLineIndex][wordIndex] = i;
+        }
+      }
+
+      initialCacheRef.current = JSON.parse(JSON.stringify(cacheContents));
+
+      //Hasta aqui no cambia nada
+
+      const accessOrder: number[] = isLRU // Only for LRU
+        ? initAccessOrder(cacheLines, addressesArray.length)
+        : [];
+
+      let position: number = 0; // Only for LRU
+
+      addressesArray.forEach((address: any) => {
+        const block = Math.floor(address / wordsPerBlock);
+
+        const label = Math.floor(block / cacheLines);
+
+        const cacheIndex = checkCache(address, cacheContents, wordsPerBlock);
+
+        let line = isLRU && cacheIndex !== -1 ? cacheIndex : 0;
+
+        if (isLRU) {
+          accessOrder[position + cacheLines] = line;
+        }
+
+        const success = cacheIndex !== -1;
+
+        if (!success) {
+          cacheMissCount++;
+
+          if (cachePolicy !== CachePolicy.DirectMapped) {
+            // Verifica el algoritmo de reemplazo seleccionado y realiza la actualización adecuada
+            switch (replacementAlgorithm) {
+              case ReplacementAlgorithm.FIFO:
+                break;
+              case ReplacementAlgorithm.LRU:
+                line = block % cacheLines;
+                let buscamosPosicion = 0;
+                let encontrado = false;
+                while (
+                  buscamosPosicion < position + cacheLines &&
+                  !encontrado
+                ) {
+                  if (accessOrder[buscamosPosicion] != -1) {
+                    line = accessOrder[buscamosPosicion];
+                    encontrado = true;
+                  } else buscamosPosicion++;
+                }
+
+                accessOrder[position + cacheLines] = line;
+                for (let i = 0; i < wordsPerBlock; i++) {
+                  cacheContents[line][i] = block * wordsPerBlock + i;
+                }
+                break;
+              default:
+                break;
+            }
+          } else {
+            updateCache(cacheContents, line, block, wordsPerBlock);
+          }
+        }
+
+        newResults.push({
+          address,
+          line,
+          label,
+          block,
+          blockAddresses: {
+            rangeMin: block * wordsPerBlock,
+            rangeMax: block * wordsPerBlock + wordsPerBlock - 1,
+          },
+          hit: success,
+        });
+
+        if (isLRU) {
+          for (let i = 0; i < position + cacheLines; i++) {
+            if (accessOrder[i] === line) {
+              accessOrder[i] = -1;
+            }
+          }
+          position++;
+        }
+      });
+
       setResults(newResults);
     };
 
@@ -171,16 +270,16 @@ const CacheSimPage = () => {
                   variant="outlined"
                   fullWidth
                 >
-                  <MenuItem value={ECachePolicy.DirectMapped}>Directa</MenuItem>
+                  <MenuItem value={CachePolicy.DirectMapped}>Directa</MenuItem>
                   {/* <MenuItem value={CachePolicy.SetAssociative}>Asociativa por Conjuntos</MenuItem> */}
-                  <MenuItem value={ECachePolicy.FullyAssociative}>
+                  <MenuItem value={CachePolicy.FullyAssociative}>
                     Completamente Asociativa
                   </MenuItem>
                 </TextField>
               )}
             />
           </Grid>
-          {cachePolicy !== ECachePolicy.DirectMapped && (
+          {cachePolicy !== CachePolicy.DirectMapped && (
             <Grid item xs={3}>
               <Controller
                 name="replacementAlgorithm"
@@ -193,8 +292,8 @@ const CacheSimPage = () => {
                     variant="outlined"
                     fullWidth
                   >
-                    <MenuItem value={EReplacementAlgorithm.FIFO}>FIFO</MenuItem>
-                    <MenuItem value={EReplacementAlgorithm.LRU}>LRU</MenuItem>
+                    <MenuItem value={ReplacementAlgorithm.FIFO}>FIFO</MenuItem>
+                    <MenuItem value={ReplacementAlgorithm.LRU}>LRU</MenuItem>
                     {/* <MenuItem value={ReplacementAlgorithm.LFU}>LFU</MenuItem> */}
                     {/* <MenuItem value={ReplacementAlgorithm.Random}>Aleatorio</MenuItem> */}
                   </TextField>
@@ -257,5 +356,3 @@ const CacheSimPage = () => {
     </Container>
   );
 };
-
-export default CacheSimPage;
